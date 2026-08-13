@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haunted Mansion</title>
+<style>
+  body { margin:0; font-family: Georgia, serif; background:#111; color:#eee; }
+  .wrap { max-width:800px; margin:0 auto; padding:24px; }
+  .card { background:#1d1a20; border:1px solid #51465a; border-radius:14px; padding:24px; box-shadow:0 8px 30px #0008; }
+  h1 { margin-top:0; }
+  #log { min-height:260px; max-height:55vh; overflow:auto; background:#0b0b0d; padding:16px; border-radius:10px; line-height:1.5; white-space:pre-wrap; }
+  .status { margin:14px 0; padding:12px; background:#29232d; border-radius:10px; }
+  .row { display:flex; gap:8px; margin-top:12px; }
+  input { flex:1; padding:13px; border-radius:8px; border:1px solid #6a5b73; background:#111; color:#fff; }
+  button { padding:13px 18px; border:0; border-radius:8px; cursor:pointer; background:#80658f; color:#fff; font-weight:bold; }
+  button:hover { filter:brightness(1.15); }
+  .help { color:#c9becf; font-size:.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🏚️ Haunted Mansion</h1>
+    <p class="help">Collect all six items before entering the Ballroom. The Ghost Bride is waiting...</p>
+    <div id="status" class="status"></div>
+    <div id="log"></div>
+    <div class="row">
+      <input id="command" autocomplete="off" placeholder="Try: go North or get Silver Cross">
+      <button id="submit">Enter</button>
+    </div>
+    <button id="restart" style="margin-top:10px;">Restart Game</button>
+  </div>
+</div>
+
+<script>
+const rooms = {
+  "Foyer": { North:"Bedroom", West:"Kitchen", East:"Library", South:"Dining Room" },
+  "Bedroom": { South:"Foyer", East:"Attic", item:"Silver Cross" },
+  "Attic": { West:"Bedroom", item:"Spell Book" },
+  "Kitchen": { East:"Foyer", item:"Rusty Key" },
+  "Library": { West:"Foyer", North:"Basement", item:"Flashlight" },
+  "Basement": { South:"Library", item:"Magic Crystal" },
+  "Dining Room": { North:"Foyer", East:"Ballroom", item:"Holy Water" },
+  "Ballroom": { West:"Dining Room", item:"Ghost Bride" }
+};
+
+let currentRoom, inventory, gameOver;
+
+function log(message) {
+  const el = document.getElementById("log");
+  el.textContent += message + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateStatus() {
+  const room = rooms[currentRoom];
+  document.getElementById("status").innerHTML =
+    `<strong>You are in the ${currentRoom}</strong><br>` +
+    `Inventory: ${inventory.length ? inventory.join(", ") : "Empty"}<br>` +
+    `${room.item ? "You see: " + room.item : "There is no item to collect in this room."}`;
+}
+
+function instructions() {
+  log("Welcome to the Haunted Mansion!");
+  log("Collect all 6 items before entering the Ballroom.");
+  log("Move commands: go North, go South, go East, go West");
+  log("Item command: get [item name]");
+  log("");
+}
+
+function restart() {
+  currentRoom = "Foyer";
+  inventory = [];
+  gameOver = false;
+  document.getElementById("log").textContent = "";
+  instructions();
+  updateStatus();
+  document.getElementById("command").focus();
+}
+
+function handleCommand(raw) {
+  if (gameOver) return;
+  const command = raw.trim();
+  if (!command) return;
+
+  log("> " + command);
+
+  if (command.toLowerCase().startsWith("go ")) {
+    const direction = command.slice(3).trim();
+    const directionKey = direction.charAt(0).toUpperCase() + direction.slice(1).toLowerCase();
+
+    if (rooms[currentRoom][directionKey]) {
+      currentRoom = rooms[currentRoom][directionKey];
+
+      if (currentRoom === "Ballroom") {
+        if (inventory.length === 6) {
+          log("🎉 Congratulations! You collected all six items and defeated the Ghost Bride!");
+        } else {
+          log("👻 The Ghost Bride has found you!");
+          log("💀 GAME OVER!");
+        }
+        gameOver = true;
+        updateStatus();
+        return;
+      }
+    } else {
+      log("Invalid move. You cannot go that direction from this room.");
+    }
+  } else if (command.toLowerCase().startsWith("get ")) {
+    const requested = command.slice(4).trim().replace(/^['"]|['"]$/g, "");
+    const item = rooms[currentRoom].item;
+
+    if (!item) {
+      log("There is no item to collect in this room.");
+    } else if (requested.toLowerCase() === item.toLowerCase()) {
+      inventory.push(item);
+      delete rooms[currentRoom].item;
+      log(item + " has been added to your inventory.");
+    } else {
+      log("That item is not in this room.");
+    }
+  } else {
+    log("Invalid command. Try a movement command or get [item name].");
+  }
+
+  updateStatus();
+}
+
+document.getElementById("submit").addEventListener("click", () => {
+  const input = document.getElementById("command");
+  handleCommand(input.value);
+  input.value = "";
+  input.focus();
+});
+
+document.getElementById("command").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("submit").click();
+});
+
+document.getElementById("restart").addEventListener("click", restart);
+
+restart();
+</script>
+</body>
+</html>
